@@ -1,0 +1,33 @@
+---
+
+ansible_remote_tmp: ~/.ansible/tmp
+control_plane_endpoint: "{{ groups['control_plane'][0] }}"
+pod_network_cidr: "172.16.0.0/16"
+service_cidr: "10.0.0.0/16"
+kubernetes_join_command_extra_opts: ""
+kubernetes_pod_network:
+  ####
+  ## Flannel CNI
+  # cni: "flannel"
+  # flannel_interface: "enp0s8"
+  # version: "v0.27.0"
+  ####
+  ## Calico CNI
+  cni: "calico"
+  version: "v3.30.2"
+  ####
+  ## Weave Net CNI
+  #cni: "weave"
+  #version: "v2.9.0"
+
+
+# Flannel config file.
+kubernetes_flannel_manifest_file: "https://github.com/flannel-io/flannel/releases/download/{{ kubernetes_pod_network.version }}/kube-flannel.yml"
+
+# Calico Tigera operator manifest file.
+kubernetes_calico_operator_manifest_file: "https://raw.githubusercontent.com/projectcalico/calico/{{ kubernetes_pod_network.version }}/manifests/tigera-operator.yaml"
+# Calico CNI custom resource file.
+kubernetes_calico_custom_resource_file: "https://raw.githubusercontent.com/projectcalico/calico/{{ kubernetes_pod_network.version}}/manifests/custom-resources.yaml"
+
+# Weave Net manifest file.
+kubernetes_weave_manifest_file: "https://github.com/rajch/weave/releases/download/{{ kubernetes_pod_network.version }}/weave-daemonset-k8s-1.11.yaml"

@@ -1,0 +1,11 @@
+---
+
+- name: 'Provision K8s Vagrant Boxes'
+  hosts: k8s_cluster
+
+# import playbooks
+- name: Import bootstrap playbook
+  import_playbook: playbooks/bootstrap/main.yml
+- name: Import k8s playbook to initialize control plane + worker nodes
+  import_playbook: playbooks/k8s/main.yml
+

@@ -1,0 +1,200 @@
+---
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: "Control Plane Endpoint: {{ control_plane_endpoint }}, Pod Network CIDR: {{ pod_network_cidr }}."
+    verbosity: 2
+
+- name: Initialize Kubernetes control plane with kubeadm init
+  ansible.builtin.command: >
+    kubeadm init
+    --control-plane-endpoint={{ control_plane_endpoint }}
+    --apiserver-advertise-address={{ control_plane_endpoint }}
+    --pod-network-cidr={{ pod_network_cidr }}
+    --service-cidr={{ service_cidr }}
+    --upload-certs
+  register: kubeadm_init
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+- name: Ensure .kube directory exists for {{ ansible_user }}.
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  when: kubeadm_init is changed
+
+- name: Symlink the admin.conf to kube config of {{ ansible_user }}.
+  ansible.builtin.file:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    state: link
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  when: kubeadm_init is changed
+
+- name: Print the init output to screen.
+  ansible.builtin.debug:
+    var: kubeadm_init.stdout
+    verbosity: 2
+  when: kubeadm_init is changed
+
+- name: Ensure Ansible ansible_remote_tmp directory exists
+  become: false
+  ansible.builtin.file:
+    path: "{{ ansible_remote_tmp | dirname }}"
+    state: directory
+    mode: '1777'
+
+# Move to weave.yml
+- name: Configure Weave Net networking.
+  when: kubernetes_pod_network.cni == 'weave'
+  become: false
+  block:
+    - name: Download the Weave Net manifest file.
+      ansible.builtin.get_url:
+        url: "{{ kubernetes_weave_manifest_file }}"
+        dest: "{{ ansible_remote_tmp }}/weave-daemonset-k8s-1.11.yaml"
+        mode: '0644'
+
+    - name: Update Weave manifest with custom pod network CIDR
+      ansible.builtin.replace:
+        path: "{{ ansible_remote_tmp }}/weave-daemonset-k8s-1.11.yaml"
+        regexp: '(\s+- name: CHECKPOINT_DISABLE\n\s+value: "1")'
+        replace: |
+          \1
+                          - name: IPALLOC_RANGE
+                            value: "{{ pod_network_cidr }}"
+      register: weave_patch_result
+
+    - name: Debug Weave Net patch result.
+      ansible.builtin.debug:
+        var: weave_patch_result
+        verbosity: 2
+
+    - name: Apply the Weave Net manifest file.
+      ansible.builtin.command: "kubectl apply -f {{ ansible_remote_tmp }}/weave-daemonset-k8s-1.11.yaml"
+      register: weave_result
+      changed_when: "'created' in weave_result.stdout"
+      until: weave_result is not failed
+      retries: 12
+      delay: 5
+
+# Move to calico.yml
+- name: Configure Calico networking.
+  when: kubernetes_pod_network.cni == 'calico'
+  become: false
+  block:
+    - name: Apply the Calico Tigera operator manifest file.
+      ansible.builtin.command: "kubectl apply -f {{ kubernetes_calico_operator_manifest_file }}"
+      register: calico_operator_result
+      changed_when: "'created' in calico_operator_result.stdout"
+      until: calico_operator_result is not failed
+      retries: 12
+      delay: 5
+
+    - name: Wait until Calico operator pods are ready.
+      ansible.builtin.command: "kubectl -n tigera-operator wait --for=condition=ready pod --all --timeout=300s"
+      register: calico_wait_result
+      changed_when: false
+      until: calico_wait_result is not failed
+      retries: 12
+      delay: 5
+
+    - name: Download the Calico CNI custom resource file.
+      ansible.builtin.get_url:
+        url: "{{ kubernetes_calico_custom_resource_file }}"
+        dest: "{{ ansible_remote_tmp }}/calico-custom-resources.yaml"
+        mode: '0644'
+
+    - name: Replace Network CIDR in Calico calico-custom-resources.yaml
+      ansible.builtin.replace:
+        path: "{{ ansible_remote_tmp }}/calico-custom-resources.yaml"
+        regexp: 'cidr:\s+(\d{1,3}\.){3}\d{1,3}/\d{1,2}'
+        replace: 'cidr: {{ pod_network_cidr }}'
+      register: calico_patch_result
+
+    - name: Debug Calico patch result.
+      ansible.builtin.debug:
+        var: calico_patch_result
+        verbosity: 2
+
+    - name: Apply the Calico CNI custom resource file.
+      ansible.builtin.command: "kubectl apply -f {{ ansible_remote_tmp }}/calico-custom-resources.yaml"
+      register: calico_custom_resources_result
+      changed_when: "'created' in calico_custom_resources_result.stdout"
+      until: calico_custom_resources_result is not failed
+      retries: 12
+      delay: 5
+
+    - name: Wait until all Calico components are AVAILABLE
+      ansible.builtin.command: "kubectl get tigerastatus -o json"
+      register: calico_status_raw
+      changed_when: false
+      failed_when: false
+      retries: 30
+      delay: 10
+      until: >
+        calico_status_raw.stdout | from_json |
+        json_query('items[*].conditions[?type==`Available`].status') |
+        select('==', 'False') | list | length == 0
+
+# Move to flannel.yml
+- name: Configure Flannel networking.
+  when: kubernetes_pod_network.cni == 'flannel'
+  become: false
+  block:
+    - name: Download the Flannel manifest file.
+      ansible.builtin.get_url:
+        url: "{{ kubernetes_flannel_manifest_file }}"
+        dest: "{{ ansible_remote_tmp }}/kube-flannel.yml"
+        mode: '0644'
+
+    - name: Replace Network CIDR in kube-flannel.yml
+      ansible.builtin.replace:
+        path: "{{ ansible_remote_tmp }}/kube-flannel.yml"
+        regexp: '"Network":\s*"[^"]*"'
+        replace: '"Network": "{{ pod_network_cidr }}"'
+
+    - name: Replace Interface in kube-flannel.yml
+      ansible.builtin.replace:
+        path: "{{ ansible_remote_tmp }}/kube-flannel.yml"
+        regexp: '(- --kube-subnet-mgr)\n'
+        replace: '\1\n        - --iface={{ kubernetes_pod_network.flannel_interface | default("enp0s8") }}\n'
+      register: flannel_patch_result
+
+    - name: Debug Flannel patch result.
+      ansible.builtin.debug:
+        var: flannel_patch_result
+        verbosity: 2
+
+    - name: Apply the Flannel manifest file.
+      ansible.builtin.command: "kubectl apply -f {{ ansible_remote_tmp }}/kube-flannel.yml"
+      register: flannel_result
+      changed_when: "'created' in flannel_result.stdout"
+      until: flannel_result is not failed
+      retries: 12
+      delay: 5
+
+- name: Get the kubeadm join command from the Kubernetes control plane.
+  ansible.builtin.command: kubeadm token create --print-join-command
+  changed_when: false
+  register: kubernetes_join_command_result
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: "Kubernetes Join Command: {{ kubernetes_join_command_result.stdout }}"
+    verbosity: 2
+
+- name: Set the kubeadm join command globally.
+  ansible.builtin.set_fact:
+    kubernetes_join_command: >
+      {{ kubernetes_join_command_result.stdout }}
+      {{ kubernetes_join_command_extra_opts }}
+  when: kubernetes_join_command_result.stdout is defined
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  with_items: "{{ groups['all'] }}"

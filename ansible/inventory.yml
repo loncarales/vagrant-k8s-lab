@@ -1,0 +1,15 @@
+k8s_cluster:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_private_key_file: /Volumes/MiniMaestro/vagrant/insecure_private_key # Adjust the path to your private key
+    ansible_user: vagrant
+
+  children:
+    control_plane:
+      hosts:
+        192.168.33.20:
+
+    worker_nodes:
+      hosts:
+        192.168.33.21:
+        192.168.33.22:

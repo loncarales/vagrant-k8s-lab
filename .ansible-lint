@@ -1,0 +1,19 @@
+---
+
+parseable: true
+
+skip_list:
+  - command-instead-of-shell  # Use shell only when shell functionality is required.
+  - literal-compare  # Don't compare to literal True/False.
+  - meta-no-info  # meta/main.yml should contain relevant info.
+  - no-changed-when  # Commands should not change things if nothing needs doing.
+  - no-handler  # Tasks that run when changed should likely be handlers.
+  - package-latest  # Package installs should not use latest.
+  - role-name  # Role name {0} does not match ``^[a-z][a-z0-9_]+$`` pattern.
+  - risky-file-permissions  # File permissions unset or incorrect.
+  - ignore-errors  # Use failed_when and specify error conditions instead of using ignore_errors.
+  - experimental  # all rules tagged as experimental
+  - unnamed-task  # All tasks should be named.
+
+exclude_paths:
+  - ansible/galaxy_roles/

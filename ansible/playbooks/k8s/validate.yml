@@ -1,0 +1,70 @@
+---
+
+- name: Wait until all nodes are Ready
+  ansible.builtin.command: kubectl get nodes -o json
+  register: nodes_output
+  changed_when: false
+  failed_when: false
+  retries: 30
+  delay: 10
+  until: >
+    nodes_output.stdout | from_json |
+    json_query("items[*].status.conditions[?type=='Ready'].status") |
+    flatten | unique == ['True']
+
+- name: Wait until all pods are Running
+  ansible.builtin.command: kubectl get pods -A -o json
+  register: pods_output
+  changed_when: false
+  failed_when: false
+  retries: 30
+  delay: 10
+  until: >
+    pods_output.stdout | from_json |
+    json_query("items[*].status.phase") |
+    flatten | unique == ['Running']
+
+- name: Verify Flannel networking is functioning.
+  when: kubernetes_pod_network.cni == 'flannel'
+  block:
+    - name: Verify Flannel DaemonSet pod count.
+      ansible.builtin.command: kubectl -n kube-flannel get daemonset kube-flannel-ds -o json
+      register: flannel_ds
+      changed_when: false
+
+    - name: Assert Flannel DaemonSet has desired pods.
+      ansible.builtin.assert:
+        that:
+          - flannel_ds.stdout | from_json | json_query("status.numberReady") == flannel_ds.stdout | from_json | json_query("status.desiredNumberScheduled")
+        fail_msg: "Flannel pods not all ready."
+        success_msg: "Flannel pods are healthy and match desired count."
+
+- name: Verify Calico Tigera Operator is functioning.
+  when: kubernetes_pod_network.cni == 'calico'
+  block:
+    - name: Verify Calico Tigera Operator deployment has desired pods.
+      ansible.builtin.command: kubectl -n tigera-operator get deployments tigera-operator -o json
+      register: calico_operator_deployment
+      changed_when: false
+
+    - name: Assert Calico Tigera Operator has desired pods
+      ansible.builtin.assert:
+        that:
+          - calico_operator_deployment.stdout | from_json | json_query("status.numberReady") == calico_operator_deployment.stdout | from_json | json_query("status.desiredNumberScheduled")
+        fail_msg: "Calico Tigera Operator pods not all running."
+        success_msg: "Calico Tigera Operator pods are healthy and running."
+
+- name: Verify Weave Net DaemonSet has desired pods.
+  when: kubernetes_pod_network.cni == 'weave'
+  block:
+    - name: Get Weave Net DaemonSet status.
+      ansible.builtin.command: kubectl -n kube-system get daemonset weave-net -o json
+      register: weave_ds
+      changed_when: false
+
+    - name: Assert Weave Net DaemonSet has desired pods.
+      ansible.builtin.assert:
+        that:
+          - weave_ds.stdout | from_json | json_query("status.numberReady") == weave_ds.stdout | from_json | json_query("status.desiredNumberScheduled")
+        fail_msg: "Weave Net pods not all ready."
+        success_msg: "Weave Net pods are healthy and match desired count."

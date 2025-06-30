@@ -1,0 +1,28 @@
+---
+
+- name: Run Kubernetes Control Plane Task
+  hosts: control_plane
+  become: true
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - ansible.builtin.include_tasks: control_plane.yml
+
+- name: Run Kubernetes Worker Nodes Task
+  hosts: worker_nodes
+  become: true
+
+  tasks:
+    - ansible.builtin.include_tasks: worker_nodes.yml
+
+- name: Validate Kubernetes Cluster
+  hosts: control_plane
+  become: false
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - ansible.builtin.include_tasks: validate.yml
