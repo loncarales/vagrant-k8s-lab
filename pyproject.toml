@@ -1,11 +1,18 @@
 [project]
 name = "vagrant-k8s-lab"
 version = "0.1.0"
-description = "Add your description here"
+description = "Vagrant Kubernetes Lab"
+authors = ["Ales Loncar <ales.loncar+github@gmail.com>"]
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "ansible-dev-tools>=25.5.2",
     "ansible-lint>=25.6.1",
     "jmespath>=1.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "asciinema>=2.4.0",
 ]

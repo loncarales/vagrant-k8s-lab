@@ -47,7 +47,8 @@
   ansible.builtin.file:
     path: "{{ ansible_remote_tmp | dirname }}"
     state: directory
-    mode: '1777'
+    mode: '0775'
+    recurse: true
 
 # Move to weave.yml
 - name: Configure Weave Net networking.

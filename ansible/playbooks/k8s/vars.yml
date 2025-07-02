@@ -13,12 +13,12 @@ kubernetes_pod_network:
   # version: "v0.27.0"
   ####
   ## Calico CNI
-  cni: "calico"
-  version: "v3.30.2"
+  # cni: "calico"
+  # version: "v3.30.2"
   ####
   ## Weave Net CNI
-  #cni: "weave"
-  #version: "v2.9.0"
+  cni: "weave"
+  version: "v2.9.0"
 
 
 # Flannel config file.

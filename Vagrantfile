@@ -89,11 +89,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       ansible.playbook = "./ansible/provision.yml"
       ansible.inventory_path = "./ansible/inventory.yml"
       ansible.limit = "all"
-      # ansible.verbose = "vv"
-      ansible.extra_vars = {
-        ansible_user: 'vagrant',
-        ansible_ssh_private_key_file: "/Volumes/MiniMaestro/vagrant/insecure_private_key" # Adjust the path to your private key
-      }
+      # ansible.verbose = "vv" # Uncomment for verbose output
     end
   end
 

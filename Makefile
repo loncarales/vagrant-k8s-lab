@@ -1,4 +1,9 @@
-all: download-galaxy-roles download-galaxy-collections up
+all: uv download-galaxy-roles download-galaxy-collections up
+
+.PHONY: uv
+uv: ## Sync uv
+	@echo "Synchronizing uv ..."
+	@uv sync
 
 .PHONY: download-galaxy-roles
 download-galaxy-roles: ## Download Ansible roles from galaxy
@@ -8,7 +13,7 @@ download-galaxy-roles: ## Download Ansible roles from galaxy
 .PHONY: download-galaxy-collections
 download-galaxy-collections: ## Download Ansible collections
 	@echo "Download ansible collections ..."
-	@uv run ansible-galaxy collection install -r ./ansible/requirements.yml
+	@uv run ansible-galaxy collection install --force -r ./ansible/requirements.yml
 
 .PHONY: lint
 lint: ## Run ansible-lint
@@ -18,12 +23,12 @@ lint: ## Run ansible-lint
 .PHONY: up
 up: ## Run vagrant up
 	@echo "Running vagrant up..."
-	@vagrant up
+	@uv run vagrant up
 
 .PHONY: provision
 provision: ## Run vagrant provision
 	@echo "Running vagrant provision..."
-	@vagrant provision
+	@uv run vagrant provision
 
 .PHONY: halt
 halt: ## Run vagrant halt

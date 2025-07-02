@@ -1,22 +1,45 @@
 # Vagrant Kubernetes Lab
 
-A local Kubernetes cluster lab environment using Vagrant, VirtualBox, and Ansible.
+A reproducible Kubernetes lab powered by **Vagrant**, **VirtualBox**, and **Ansible** (via [uv](https://github.com/astral-sh/uv)).
+Provision a multi-node Kubernetes cluster (with `containerd`) and choose your networking layer from **Flannel**, **Calico**, or **Weave Net**.
 
-## Repository
+---
 
-**Repository Name**: DevSecOps
+## 🧪 Features
 
-## Description
+- Kubernetes v1.33 preinstalled (via prepared Vagrant box)
+- Preinstalled components: `containerd, runc, crictl, kubelet, kubeadm, kubectl`
+- Multi-node Kubernetes cluster with 1 control plane and 2 workers
+- Choose from 3 (Container Network Interface) CNI addons:
+  - [Flannel](https://github.com/flannel-io/flannel)
+  - [Calico](https://www.tigera.io/project-calico/)
+  - [Weave Net](https://rajch.github.io/weave/)
+- Managed with **Ansible**, isolated via **uv**
+- Easy lifecycle management via `Makefile`
 
-This project provides an automated setup for a local Kubernetes cluster using Vagrant and VirtualBox. It creates one Kubernetes control plane node and two worker nodes, all provisioned using Ansible.
-
-## Requirements
+## 📋 Requirements
 
 - [Vagrant](https://www.vagrantup.com/) (for VM management)
 - [VirtualBox](https://www.virtualbox.org/) (as the VM provider)
 - [uv](https://github.com/astral-sh/uv) (Python package manager)
-- [make](https://www.gnu.org/software/make/) (for running commands)
-- Python 3.13 or higher
+- [GNU Make](https://www.gnu.org/software/make/) (for running commands)
+- Python 3.10 or higher (for uv)
+
+## 🌐 Configurable CNI Plugins
+
+Select one of the supported CNI plugins before bringing up the cluster:
+
+- Weave Net (default)
+- Flannel
+- Calico
+
+Configuration is controlled via Ansible vars in `ansible/playbooks/k8s/vars.yml`
+
+```yaml
+kubernetes_pod_network:
+  cni: "calico" # for Calico
+  version: "v3.30.2"
+```
 
 ## Architecture
 
@@ -24,43 +47,54 @@ The lab creates the following VMs:
 - 1 Kubernetes control plane node (2 CPUs, 2GB RAM)
 - 2 Kubernetes worker nodes (2 CPUs, 4GB RAM each)
 
-All VMs are based on Debian 12 (using the `celavi/debian12-k8s` box).
+All VMs are based on Debian 12 (using the [celavi/debian12-k8s](https://portal.cloud.hashicorp.com/vagrant/discover/celavi/debian12-k8s) box).
 
-## Getting Started
 
-### Installation
+## 🛠️ Installation
 
 1. Clone this repository:
-   ```bash
-   git clone <repository-url>
-   cd DevSecOps
-   ```
-
-2. Install all dependencies and start the cluster:
-   ```bash
-   make
-   ```
-
-   This will:
-   - Download required Ansible roles and collections
-   - Start the Vagrant VMs
-   - Provision the Kubernetes cluster
-
-### Available Commands
 
 ```bash
-make                      # Download dependencies and start the cluster
-make download-galaxy-roles # Download Ansible roles from Galaxy
-make download-galaxy-collections # Download Ansible collections
-make lint                 # Run ansible-lint
-make up                   # Start the Vagrant VMs
-make provision            # Run the provisioning again
-make halt                 # Stop the Vagrant VMs
-make destroy              # Destroy the Vagrant VMs
-make help                 # Show available commands
+git clone https://github.com/loncarales/vagrant-k8s-lab
+cd vagrant-k8s-lab
+ ```
+
+2. Provision the lab:
+
+```bash
+make
 ```
 
-## Accessing the Cluster
+This will:
+- Set up a Python virtual environment using `uv`
+- Download required Ansible roles and collections
+- Start the Vagrant VMs
+- Provision the Kubernetes cluster
+
+### 🧰 Makefile Commands
+
+You can manage everything with `make`. Run:
+
+```bash
+make help
+```
+
+To see available targets:
+
+| Command                            | Description                        |
+| ---------------------------------- | ---------------------------------- |
+| `make destroy`                     | Run `vagrant destroy`              |
+| `make download-galaxy-collections` | Download Ansible collections       |
+| `make download-galaxy-roles`       | Download Ansible roles from Galaxy |
+| `make halt`                        | Run `vagrant halt`                 |
+| `make lint`                        | Run `ansible-lint`                 |
+| `make provision`                   | Run `vagrant provision`            |
+| `make up`                          | Run `vagrant up`                   |
+| `make uv`                          | Sync Python environment via `uv`   |
+| `make help`                        | Show this help menu                |
+
+
+## 🚀 Accessing the Cluster
 
 Once the cluster is up and running, you can SSH into the control plane node:
 
@@ -70,19 +104,54 @@ vagrant ssh k8s
 
 From there, you can use `kubectl` to interact with your Kubernetes cluster.
 
-## Project Structure
+### Verify Cluster Status
 
-- `Vagrantfile`: Defines the VM configuration
-- `Makefile`: Contains commands for managing the environment
-- `ansible/`: Contains Ansible playbooks and configurations
-  - `provision.yml`: Main provisioning playbook
-  - `playbooks/bootstrap/`: Basic system setup
-  - `playbooks/k8s/`: Kubernetes installation and configuration
+```bash
+kubectl get nodes -o wide
+kubectl get pods -A -o wide
+```
 
-## License
+### Deploy a Sample App
 
-[Add license information here]
+```bash
+kubectl create ns quickstart
+kubectl create deployment nginx --image=nginx --namespace=quickstart
+kubectl expose deployment nginx --port=80 --type=ClusterIP --namespace=quickstart
+```
+
+### Test Network Access (Pod to Pod)
+
+```bash
+kubectl run access --rm -ti --namespace=quickstart --image=busybox -- /bin/sh
+wget -qO- nginx
+```
+
+## 🧼 Cleanup
+
+To clean up the lab and remove all resources, run:
+
+```bash
+make destroy
+```
+
+
+## 🧾 License
+
+MIT License. See the [LICENSE](LICENSE) file.
+
+
+## ❤️ Credits
+
+- [Ansible](https://docs.ansible.com/)
+- [Vagrant](https://developer.hashicorp.com/vagrant) and [Vagrant Boxes](https://portal.cloud.hashicorp.com/vagrant/discover)
+- [VirtualBox](https://www.virtualbox.org/)
+- [Kubernetes](https://kubernetes.io/)
+- [uv](https://docs.astral.sh/uv/)
+- [Weave Net](https://rajch.github.io/weave/)
+- [Project Calico](https://www.tigera.io/project-calico/)
+- [Flannel](https://github.com/flannel-io/flannel)
+- Put together with ❤️ by Aleš Lončar
 
 ## Contributing
 
-[Add contribution guidelines here]
+Issues, feedback, and PRs are welcome. Fork and submit your ideas!

@@ -1,5 +1,9 @@
 ---
 
+- name: Wait a little for the cluster to stabilize
+  ansible.builtin.pause:
+    seconds: 60
+
 - name: Wait until all nodes are Ready
   ansible.builtin.command: kubectl get nodes -o json
   register: nodes_output
