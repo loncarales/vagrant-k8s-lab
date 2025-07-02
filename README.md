@@ -1,11 +1,24 @@
-# Vagrant Kubernetes Lab
+# 🧪 Vagrant Kubernetes Lab
 
-A reproducible Kubernetes lab powered by **Vagrant**, **VirtualBox**, and **Ansible** (via [uv](https://github.com/astral-sh/uv)).
-Provision a multi-node Kubernetes cluster (with `containerd`) and choose your networking layer from **Flannel**, **Calico**, or **Weave Net**.
+A lightweight and flexible local Kubernetes lab environment powered by **Vagrant**, **VirtualBox**, and **Ansible (via uv)**.
+Supports multiple **CNI** options: **Flannel**, **Calico**, and **Weave Net**.
+Ideal for testing, development, and hands-on Kubernetes learning.
 
 ---
 
-## 🧪 Features
+## 🖥️ Demo
+
+This animated demo illustrates the complete provisioning process of the Kubernetes lab using a single `make` command. It includes:
+
+- Installing all required dependencies via **uv**
+- Spinning up **VirtualBox** VMs using **Vagrant**
+- Bootstrapping the cluster with **Ansible** automation
+- Installing the selected CNI plugin (default: **Weave Net**)
+- Verifying the cluster state using `kubectl`
+
+![Kubernetes Lab Demo](https://cdn.loncar.net/vagrant-k8s-lab-demo.gif)
+
+## ✨ Features
 
 - Kubernetes v1.33 preinstalled (via prepared Vagrant box)
 - Preinstalled components: `containerd, runc, crictl, kubelet, kubeadm, kubectl`
