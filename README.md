@@ -15,8 +15,7 @@ This animated demo illustrates the complete provisioning process of the Kubernet
 - Bootstrapping the cluster with **Ansible** automation
 - Installing the selected CNI plugin (default: **Weave Net**)
 - Verifying the cluster state using `kubectl`
-
-## Video
+- Link to [Kubernetes Lab Demo](https://cdn.loncar.net/vagrant-k8s-lab-demo.gif)
 
 ![Kubernetes Lab Demo](https://cdn.loncar.net/vagrant-k8s-lab-demo.gif)
 
