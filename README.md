@@ -14,6 +14,7 @@ This animated demo illustrates the complete provisioning process of the Kubernet
 - Spinning up **VirtualBox** VMs using **Vagrant**
 - Bootstrapping the cluster with **Ansible** automation
 - Installing the selected CNI plugin (default: **Weave Net**)
+- Configuring Pod and Service CIDRs, customizable to avoid conflicts
 - Verifying the cluster state using `kubectl`
 - Link to [Kubernetes Lab Demo](https://cdn.loncar.net/vagrant-k8s-lab-demo.gif)
 
@@ -50,10 +51,14 @@ Select one of the supported CNI plugins before bringing up the cluster:
 Configuration is controlled via Ansible vars in `ansible/playbooks/k8s/vars.yml`
 
 ```yaml
+pod_network_cidr: "172.16.0.0/16"
+service_cidr: "10.0.0.0/16"
+
 kubernetes_pod_network:
   cni: "calico" # for Calico
   version: "v3.30.2"
 ```
+> 💡 Both `pod_network_cidr` and `service_cidr` are configurable to avoid IP range overlap
 
 ## Architecture
 
